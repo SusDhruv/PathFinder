@@ -19,14 +19,48 @@ function Chat() {
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const {chatid} = useParams()
+  const { chatid } = useParams()
   console.log(chatid)
+
+  const getMessage = async () => {
+    try {
+      console.log('Fetching messages for chatId:', chatid);
+      const result = await axios.get(`/api/history?recordId=${chatid}`);
+      console.log('Fetched messages:', result.data);
+      
+      if (result.data.success && result.data.data?.content) {
+        setMessages(result.data.data.content);
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      // If no history found, start with empty messages (this is normal for new chats)
+    }
+  }
+
+  useEffect(() => {
+    if (chatid) {
+      getMessage();
+    }
+  }, [chatid]);
 
   useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, loading]);
+
+  const updateMessage = async (messagesToUpdate: Message[]) => {
+    try {
+      console.log('Updating history with messages:', messagesToUpdate);
+      const result = await axios.put('/api/history', {
+        content: messagesToUpdate,
+        recordId: chatid
+      });
+      console.log('History update result:', result.data);
+    } catch (error) {
+      console.error('Error updating history:', error);
+    }
+  }
 
   const onSend = async () => {
     if (!userInput.trim()) return;
@@ -36,15 +70,21 @@ function Chat() {
     setLoading(true);
     try {
       const result = await axios.post('/api/Ai-chat-Agent', { userInput });
-      setMessages([
+      const updatedMessages = [
         ...newMessages,
         { role: 'ai' as const, content: typeof result.data === 'string' ? result.data : JSON.stringify(result.data) }
-      ]);
+      ];
+      setMessages(updatedMessages);
+      // Update history after successful AI response
+      await updateMessage(updatedMessages);
     } catch (e: any) {
-      setMessages([
+      const errorMessages = [
         ...newMessages,
         { role: 'ai' as const, content: e?.response?.data?.error || 'Something went wrong.' }
-      ]);
+      ];
+      setMessages(errorMessages);
+      // Update history even if AI response failed
+      await updateMessage(errorMessages);
     }
     setLoading(false);
   };
