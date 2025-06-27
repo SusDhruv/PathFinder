@@ -15,7 +15,7 @@ const toolList = [
         desc: 'Improve your resume',
         icon : '/resume.png',
         button: 'Analyze Now',
-        path: '/ai-resume-analyzer'
+        path: '/Ai-tools/ai-Resume'
         
     },
     {
@@ -23,27 +23,17 @@ const toolList = [
         desc: 'Build your roadmap',
         icon : '/roadmap.png',
         button: 'Generate Now',
-        path: '/career-roadmap-generator'
+        path: '/Ai-tools/ai-Roadmap'
         
     },
-    {
-        name : 'Cover Letter Generator',
-        desc: 'Write a cover letter',
-        icon : '/cover.png',
-        button: 'Create Now',
-        path: '/cover-letter-generator'
-        
-    },
-    
 ]
-
 
 function Tools() {
   return (
-    <div className='mt-7 p-5 bg-white border rounded-xl'>
-      <h2 className='font-bold text-lg mb-1'>Available AI Tools</h2>
-      <p className='mb-6'>Start Building and Shape Your Career with this exclusive AI Tools</p>
-      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 min-h-[200px] bg-gray-50 p-4 rounded-lg'>
+    <div id="tools-section" className='mt-10 p-8 rounded-2xl bg-gradient-to-br from-white via-blue-50 to-purple-50 border border-blue-100 shadow-lg'>
+      <h2 className='font-extrabold text-3xl mb-2 text-blue-900 text-center tracking-tight'>Available AI Tools</h2>
+      <p className='mb-8 text-center text-gray-500 text-lg font-light'>Start building and shape your career with these exclusive AI tools</p>
+      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 min-h-[200px]'>
         {toolList.map((tool, index) => (
           <ToolCard tool={tool} key={index} />
         ))}

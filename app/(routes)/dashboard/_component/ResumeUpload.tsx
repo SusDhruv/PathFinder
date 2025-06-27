@@ -12,6 +12,7 @@ import { File, Sparkle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {v4 as uuidv4} from 'uuid';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 function ResumeUpload({openResumeUpload, setOpenResumeDialog}: any) {
     const [file, setFile] = useState<File | undefined>();
@@ -23,7 +24,7 @@ function ResumeUpload({openResumeUpload, setOpenResumeDialog}: any) {
             console.log(file.name);
         }
     }
-
+    const router = useRouter();
     const onUpload = async () => {
         if (!file) return;
         setUploading(true);
@@ -33,16 +34,16 @@ function ResumeUpload({openResumeUpload, setOpenResumeDialog}: any) {
         formData.append('resumeFile', file);
         formData.append('aiAgentType', 'AiResumeAnalyzerAgent');
         try {
-            const response = await axios.post('/api/ai-Resume-Agent', formData, {
+            await axios.post('/api/ai-Resume-Agent', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            console.log('Upload success:', response.data);
-            setOpenResumeDialog(false);
         } catch (error) {
             console.error('Upload failed:', error);
         } finally {
+            setOpenResumeDialog(false);
+            router.push(`/Ai-tools/ai-resume-analyzer/${recordId}`);
             setUploading(false);
         }
     }

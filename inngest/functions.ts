@@ -6,17 +6,34 @@ import { HistoryTable } from "@/configs/schema";
 import { db } from "@/configs/db";
 import { eq } from "drizzle-orm";
 import { usersTable } from "@/configs/schema";
+import { metadata } from "@/app/layout";
 
 
 export const aiCareerAgent = createAgent({
     name: 'AiCareerChatAgent',
     description: 'An AI agent that answers career related questions',
-    system: 'PathMentor is an AI-powered career guidance agent designed to help users navigate their professional journey with clarity and purpose.Based  input and real-time job market trends, the AI recommends personalized career paths—such as software engineering, data science, UI/UX design, or product management—outlining the specific skills, tools, and qualifications needed for each. PathMentor then generates tailored learning plans that include curated online courses project ideas, and estimated timelines to achieve key milestones.',
+    system: `You are PathFinder, an expert AI career coach. Answer user questions about careers, skills, and job search in 2-4 clear, direct sentences. Avoid unnecessary details, disclaimers, or long-winded explanations. Respond as quickly and concisely as possible, focusing on actionable advice and clarity.`,
     model: gemini({
         model: "gemini-2.5-flash",
         apiKey: process.env.GEMINI_API_KEY
     })
 });
+
+// Helper to add timeout to a promise
+function withTimeout(promise: Promise<any>, ms: number): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('AI agent timed out after 15 seconds')), ms);
+    promise
+      .then((value: any) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err: any) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
 
 export const CareerAgent = inngest.createFunction(
     { id: 'AiCareerAgent' },
@@ -26,7 +43,7 @@ export const CareerAgent = inngest.createFunction(
             const { userInput } = event?.data;
             if (!userInput) throw new Error("No userInput provided");
             console.log("userInput:", userInput);
-            const result = await aiCareerAgent.run(userInput);
+            const result = await withTimeout(aiCareerAgent.run(userInput), 10000);
             console.log("result:", result);
             if (!result) throw new Error("No result from aiCareerAgent");
             return result;
@@ -139,19 +156,19 @@ export const AiResumeAgent = inngest.createFunction(
       }
 
       // Run the resume analyzer agent on the extracted PDF text
-      const aiResumeReport = await AiResumeAnalyzerAgent.run(pdfText);
+      const aiResumeReport = await withTimeout(AiResumeAnalyzerAgent.run(pdfText), 15000);
 
       // Extract and parse the content as JSON
       let contentStr = '';
       if (
         aiResumeReport &&
         typeof aiResumeReport === 'object' &&
-        Array.isArray(aiResumeReport.output) &&
-        aiResumeReport.output[0] &&
-        typeof aiResumeReport.output[0] === 'object' &&
-        'content' in aiResumeReport.output[0]
+        Array.isArray((aiResumeReport as any).output) &&
+        (aiResumeReport as any).output[0] &&
+        typeof (aiResumeReport as any).output[0] === 'object' &&
+        'content' in (aiResumeReport as any).output[0]
       ) {
-        contentStr = String(aiResumeReport.output[0].content);
+        contentStr = String((aiResumeReport as any).output[0].content);
       } else if (typeof aiResumeReport === 'string') {
         contentStr = aiResumeReport;
       } else {
@@ -169,12 +186,14 @@ export const AiResumeAgent = inngest.createFunction(
           content: any;
           aiAgentType: string;
           createdAt: Date;
+          fileUrl: string;
           userEmail?: string;
         } = {
           recordId,
           content: parsed,
           aiAgentType,
-          createdAt: new Date()
+          createdAt: new Date(),
+          fileUrl: imageKitFile.url
         };
 
         const saveToDb = await step.run('saveToDb', async () => {
@@ -202,5 +221,84 @@ export const AiResumeAgent = inngest.createFunction(
       console.error("AiResumeAgent error:", e);
       throw e;
     }
+  }
+);
+
+export const AIRoadmapGeneratorAgent = createAgent({
+  name: "AIRoadmapGeneratorAgent",
+  description: "Generates a React flow tree-structured learning roadmap for a given position or skills.",
+  system: `You are an expert roadmap generator. Given a user input (position or skills), generate a vertical, tree-structured learning roadmap in JSON for React Flow.
+- Limit the roadmap to 8–12 nodes and 10–15 edges for speed.
+- The roadmap must be clear, concise, and visually spaced (like roadmap.sh).
+- Order steps from fundamentals to advanced, with branching for specializations if needed.
+- Each node: unique id, type 'turbo', x/y position, title, short description, and a learning resource link.
+- Each edge: unique id, source, and target.
+- Make node positions spacious for readability.
+- Respond ONLY with a JSON object in this format:
+{
+  "roadmapTitle": "",
+  "description": "<3-5 lines>",
+  "duration": "",
+  "initialNodes": [ ... ],
+  "initialEdges": [ ... ]
+}
+Do not include any extra text or explanation. Be as fast and efficient as possible. Avoid unnecessary detail.`,
+  model: gemini({
+    model: "gemini-2.5-flash",
+    apiKey: process.env.GEMINI_API_KEY
+  })
+});
+
+export const AIRoadMapAgent = inngest.createFunction(
+  { id: 'AiRoadMapAgent' },
+  { event: 'AiRoadMapAgent' },
+  async ({ event, step }) => {
+    const { roadmapId, userInput, userEmail } = event.data;
+    let roadmapResult;
+    try {
+      roadmapResult = await withTimeout(AIRoadmapGeneratorAgent.run(userInput), 15000);
+    } catch (err) {
+      throw new Error('AI agent timed out after 15 seconds');
+    }
+    let content = null;
+    if (
+      roadmapResult &&
+      typeof roadmapResult === 'object' &&
+      Array.isArray((roadmapResult as any).output) &&
+      (roadmapResult as any).output[0] &&
+      typeof (roadmapResult as any).output[0] === 'object' &&
+      'content' in (roadmapResult as any).output[0]
+    ) {
+      const rawContent = (roadmapResult as any).output[0].content;
+      if (typeof rawContent === 'string') {
+        const cleaned = rawContent.replace(/```json|```/g, '').trim();
+        content = JSON.parse(cleaned);
+      } else {
+        content = rawContent;
+      }
+    }
+    // Save to DB
+    if (content) {
+      const aiAgentType = 'AiRoadMapAgent';
+      let baseInsertData: any = {
+        recordId: roadmapId,
+        content: content,
+        aiAgentType,
+        createdAt: new Date(),
+        metadData:userInput
+      };
+      if (userEmail) {
+        baseInsertData.userEmail = userEmail;
+      }
+      await step.run('saveToDb', async () => {
+        try {
+          await db.insert(HistoryTable).values(baseInsertData);
+        } catch (err) {
+          console.error('DB Insert Error:', err);
+          throw err;
+        }
+      });
+    }
+    return content;
   }
 );

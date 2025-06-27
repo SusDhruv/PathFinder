@@ -2,6 +2,8 @@ import { inngest } from "../../../inngest/client";;
 import axios from "axios";
 import { NextResponse } from "next/server";
 
+export const maxDuration = 35;
+
 export async function POST(req:any) {
   try {
     const {userInput} = await req.json();

@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import React, { useState, useRef, useEffect } from 'react'
-import { Send } from 'lucide-react'
+import { Send, User, Bot } from 'lucide-react'
 import EmptyState from '../_component/emptyState'
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
@@ -101,38 +101,53 @@ function Chat() {
       </div>
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-6">
         <div className="w-full max-w-2xl flex-1 flex flex-col justify-center">
-          {messages.length === 0 && !loading && (
+          {messages.length === 0 && !loading ? (
             <EmptyState selectedQuestion={(question: string) => setUserInput(question)} />
+          ) : (
+            <>
+              <div className="flex flex-col gap-6 overflow-y-auto flex-1 py-6 px-2 bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-xl border border-blue-100 shadow-inner" style={{ minHeight: 200, height: '100%' }}>
+                {messages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {msg.role === 'ai' && (
+                      <div className="flex flex-col items-center mr-2">
+                        <div className="bg-blue-100 text-blue-600 rounded-full p-2 shadow"><Bot size={20} /></div>
+                      </div>
+                    )}
+                    <div
+                      className={`rounded-2xl px-5 py-3 max-w-[70%] whitespace-pre-line shadow-md text-base
+                        ${msg.role === 'user'
+                          ? 'bg-blue-600 text-white self-end rounded-br-md border-2 border-blue-300'
+                          : 'bg-white text-blue-900 self-start border border-blue-200 rounded-bl-md'}
+                      `}
+                    >
+                      {msg.role === 'ai' ? <ReactMarkdown>{msg.content}</ReactMarkdown> : msg.content}
+                    </div>
+                    {msg.role === 'user' && (
+                      <div className="flex flex-col items-center ml-2">
+                        <div className="bg-blue-600 text-white rounded-full p-2 shadow"><User size={20} /></div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {loading && (
+                  <div className="flex items-end gap-2 justify-start">
+                    <div className="bg-blue-100 text-blue-600 rounded-full p-2 shadow"><Bot size={20} /></div>
+                    <div className="rounded-2xl px-5 py-3 max-w-[70%] bg-gray-100 text-blue-700 shadow-md text-base border border-blue-100 animate-pulse">
+                      AI is typing...
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+              <div className='flex-1'></div>
+            </>
           )}
-          <div className="flex flex-col gap-4 overflow-y-auto max-h-[60vh] py-4 px-2" style={{ minHeight: 200 }}>
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`rounded-lg px-4 py-3 max-w-[80%] whitespace-pre-line shadow-md text-base
-                    ${msg.role === 'user'
-                      ? 'bg-blue-600 text-white self-end rounded-br-none'
-                      : 'bg-white text-blue-900 self-start border border-blue-200 rounded-bl-none'}
-                  `}
-                >
-                  {msg.role === 'ai' ? <ReactMarkdown>{msg.content}</ReactMarkdown> : msg.content}
-                </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="rounded-lg px-4 py-3 max-w-[80%] bg-gray-100 text-blue-700 shadow-md text-base border border-blue-100 animate-pulse">
-                  AI is typing...
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
         </div>
-        <div className='flex-1'></div>
       </div>
+      {/* Always show input area */}
       <div className='flex justify-between items-center gap-4 p-4 border-t bg-white shadow-inner sticky bottom-0'>
         <Input
           placeholder='Type Here'

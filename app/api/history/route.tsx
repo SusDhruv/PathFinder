@@ -104,27 +104,28 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const recordId = searchParams.get('recordId');
         
-        if (!recordId) {
+        if (recordId) {
+            // If recordId is provided, return that specific record
+            const result = await db.select().from(HistoryTable).where(eq(HistoryTable.recordId, recordId));
+            if (result.length === 0) {
+                return NextResponse.json(
+                    { error: "No history found for this recordId" },
+                    { status: 404 }
+                );
+            }
             return NextResponse.json(
-                { error: "recordId parameter is required" },
-                { status: 400 }
+                { success: true, data: result[0] },
+                { status: 200 }
+            );
+        } else {
+            // If no recordId, return all history for the user
+            const userEmail = user.primaryEmailAddress.emailAddress;
+            const result = await db.select().from(HistoryTable).where(eq(HistoryTable.userEmail, userEmail));
+            return NextResponse.json(
+                { success: true, data: result },
+                { status: 200 }
             );
         }
-
-        const result = await db.select().from(HistoryTable).where(eq(HistoryTable.recordId, recordId));
-        
-        if (result.length === 0) {
-            return NextResponse.json(
-                { error: "No history found for this recordId" },
-                { status: 404 }
-            );
-        }
-
-        return NextResponse.json(
-            { success: true, data: result[0] },
-            { status: 200 }
-        );
-
     } catch (error) {
         console.error('Error in history API GET:', error);
         return NextResponse.json(
