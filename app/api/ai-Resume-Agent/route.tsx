@@ -4,6 +4,17 @@ import { inngest } from '@/inngest/client';
 import axios from 'axios';
 
 export async function POST(req: Request) {
+  async function getRuns(runId: string) {
+    const result = await axios.get(
+      `${process.env.INNGEST_SERVER_HOST}v1/events/${runId}/runs`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.INNGEST_SIGNING_KEY}`
+        }
+      }
+    );
+    return result.data;
+  }
   try {
     const formData = await req.formData();
     const recordId = formData.get('recordId');
@@ -74,16 +85,4 @@ export async function POST(req: Request) {
     const err = e as any;
     return NextResponse.json({ error: err.message || 'Server error', stack: err.stack }, { status: 500 });
   }
-}
-
-async function getRuns(runId: string) {
-  const result = await axios.get(
-    `${process.env.INNGEST_SERVER_HOST}v1/events/${runId}/runs`,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.INNGEST_SIGNING_KEY}`
-      }
-    }
-  );
-  return result.data;
 }

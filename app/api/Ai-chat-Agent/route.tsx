@@ -5,6 +5,17 @@ import { NextResponse } from "next/server";
 export const maxDuration = 35;
 
 export async function POST(req:any) {
+  async function getRuns(runId:string) {
+    const result = await axios.get(
+        `${process.env.INNGEST_SERVER_HOST}v1/events/${runId}/runs`,
+        {
+            headers: {
+                Authorization: `Bearer ${process.env.INNGEST_SIGNING_KEY}`
+            }
+        }
+    );
+    return result.data;
+  }
   try {
     const {userInput} = await req.json();
     if (!userInput) {
@@ -69,16 +80,4 @@ export async function POST(req:any) {
     console.error('API error:', err);
     return NextResponse.json({ error: err.message || 'Server error', stack: err.stack }, { status: 500 });
   }
-}
-
-export async function getRuns(runId:string) {
-    const result = await axios.get(
-        `${process.env.INNGEST_SERVER_HOST}v1/events/${runId}/runs`,
-        {
-            headers: {
-                Authorization: `Bearer ${process.env.INNGEST_SIGNING_KEY}`
-            }
-        }
-    );
-    return result.data;
 }
