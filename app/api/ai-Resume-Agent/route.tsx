@@ -5,8 +5,11 @@ import axios from 'axios';
 
 export async function POST(req: Request) {
   async function getRuns(runId: string) {
+    const baseUrl = process.env.INNGEST_SERVER_HOST?.endsWith('/')
+      ? process.env.INNGEST_SERVER_HOST
+      : process.env.INNGEST_SERVER_HOST + '/';
     const result = await axios.get(
-      `${process.env.INNGEST_SERVER_HOST}v1/events/${runId}/runs`,
+      `${baseUrl}v1/events/${runId}/runs`,
       {
         headers: {
           Authorization: `Bearer ${process.env.INNGEST_SIGNING_KEY}`
